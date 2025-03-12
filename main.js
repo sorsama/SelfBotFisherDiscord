@@ -2,8 +2,25 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification } = r
 const path = require('path');
 const fs = require('fs');
 
+// Determine if we are running in dev or production
+const isDev = !app.isPackaged;
+
+// Helper to get correct file paths for both dev and production
+const getFilePath = (filename) => {
+  if (isDev) {
+    return path.join(__dirname, filename);
+  } else {
+    return path.join(process.resourcesPath, 'app', filename);
+  }
+};
+
+// Add this to your main.js to make the paths available globally
+global.paths = {
+  getFilePath: getFilePath
+};
+
 // Simple config storage
-const configPath = path.join(__dirname, 'config.json');
+const configPath = getFilePath('config.json');
 const store = {
   get: (key, defaultValue) => {
     try {
@@ -30,7 +47,8 @@ const store = {
   }
 };
 
-const { startBot, stopBot } = require('./bot');
+// Import the bot module with correct path
+const { startBot, stopBot } = require(getFilePath('bot.js'));
 
 let mainWindow;
 let tray = null;
@@ -44,16 +62,16 @@ function createWindow() {
     height: 700,
     frame: false, // Remove default frame for custom title bar
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: getFilePath('preload.js'),
       contextIsolation: true,
       nodeIntegration: false
     },
-    icon: path.join(__dirname, 'assets', 'icon.png'),
+    icon: getFilePath('assets/icon.png'),
     backgroundColor: '#36393f', // Discord background color
     show: false // Don't show until ready
   });
 
-  mainWindow.loadFile('index.html');
+  mainWindow.loadFile(getFilePath('index.html'));
   
   // Show window when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {
@@ -73,7 +91,7 @@ function createWindow() {
 // Set up tray
 function createTray() {
   // Use different icon paths based on platform
-  const iconPath = path.join(__dirname, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+  const iconPath = getFilePath(`assets/${process.platform === 'win32' ? 'icon.ico' : 'icon.png'}`);
   const trayIcon = nativeImage.createFromPath(iconPath);
   
   tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
@@ -128,7 +146,7 @@ function showNotification(title, body, onClick = null) {
   const notification = new Notification({
     title: title,
     body: body,
-    icon: path.join(__dirname, 'assets', 'icon.png'),
+    icon: getFilePath('assets/icon.png'),
     silent: false
   });
   

@@ -1,33 +1,19 @@
 const { spawn } = require('child_process');
 const path = require('path');
-const fs = require('fs');
+const { app } = require('electron');
 
 let botProcess = null;
 let logCallback = null;
 let statusCallback = null;
 
-// Update the setupEnv function to use botId as userId for DM mode
-const setupEnv = (config) => {
-  return new Promise((resolve, reject) => {
-    try {
-      // If in DM mode and userId is empty, use the botId as the userId
-      const userId = (config.channelType === 'dm' && !config.userId) ? config.botId : (config.userId || '');
-      
-      const envContent = 
-        `DISCORD_TOKEN=${config.token}\n` +
-        `CHANNEL_TYPE=${config.channelType}\n` +
-        `DISCORD_BOT_CHANNEL=${config.channel || ''}\n` +
-        `DISCORD_USER_ID=${userId}\n` +
-        `DISCORD_BOT_ID=${config.botId}\n` +
-        `FISHING_INTERVAL=${config.interval}\n` +
-        `AUTO_START_FISHING=false`;
-        
-      fs.writeFileSync(path.join(__dirname, '.env'), envContent);
-      resolve();
-    } catch (error) {
-      reject(error);
-    }
-  });
+// Get the correct path to index.js in both dev and production
+const getIndexPath = () => {
+  const isDev = !app.isPackaged;
+  if (isDev) {
+    return path.join(__dirname, 'index.js');
+  } else {
+    return path.join(process.resourcesPath, 'app', 'index.js');
+  }
 };
 
 // Start the Discord bot as a child process
@@ -40,14 +26,30 @@ const startBot = async (config, logCb, statusCb) => {
   logCallback = logCb;
   statusCallback = statusCb;
   
-  // Save configuration to .env file
-  await setupEnv(config);
-  
   logCallback('Initializing Discord bot...');
   
-  // Spawn the bot process
-  botProcess = spawn('node', [path.join(__dirname, 'index.js')], {
-    stdio: ['pipe', 'pipe', 'pipe', 'ipc']
+  // Prepare environment variables for the child process
+  const env = {
+    ...process.env,
+    DISCORD_TOKEN: config.token,
+    CHANNEL_TYPE: config.channelType,
+    DISCORD_BOT_CHANNEL: config.channel || '',
+    DISCORD_USER_ID: (config.channelType === 'dm' && !config.userId) 
+      ? config.botId 
+      : (config.userId || ''),
+    DISCORD_BOT_ID: config.botId,
+    FISHING_INTERVAL: config.interval.toString(),
+    AUTO_START_FISHING: config.autoStart ? 'true' : 'false'
+  };
+
+  // Get the correct path to index.js
+  const indexPath = getIndexPath();
+  logCallback(`Starting bot using index.js at: ${indexPath}`);
+  
+  // Spawn the bot process with the environment variables
+  botProcess = spawn('node', [indexPath], {
+    stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+    env: env
   });
   
   // Handle process output
@@ -64,9 +66,6 @@ const startBot = async (config, logCb, statusCb) => {
       if (message) logCallback(`ERROR: ${message}`);
     });
   });
-  
-  // Handle process events - DON'T use statusCallback/logCallback directly here
-  // The main process will handle these messages and call the appropriate callbacks
   
   botProcess.on('close', (code) => {
     logCallback(`Bot process exited with code ${code}`);
