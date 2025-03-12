@@ -1,9 +1,9 @@
 {
   "name": "selfbot-fisher",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "electron ."
   },
   "keywords": [],
   "author": "soruz",
@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "discord.js-selfbot-v13": "^3.6.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "electron": "^35.0.1"
   }
 }
