@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, Notification } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -33,26 +33,144 @@ const store = {
 const { startBot, stopBot } = require('./bot');
 
 let mainWindow;
+let tray = null;
 let botRunning = false;
 let botProcess = null;
+let isQuitting = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 900,
     height: 700,
+    frame: false, // Remove default frame for custom title bar
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false
-    }
+    },
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    backgroundColor: '#36393f', // Discord background color
+    show: false // Don't show until ready
   });
 
   mainWindow.loadFile('index.html');
-  // mainWindow.webContents.openDevTools(); // Uncomment for debugging
+  
+  // Show window when ready to prevent visual flash
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+  
+  // Handle close event to minimize to tray instead
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      return false;
+    }
+  });
+}
+
+// Set up tray
+function createTray() {
+  // Use different icon paths based on platform
+  const iconPath = path.join(__dirname, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+  const trayIcon = nativeImage.createFromPath(iconPath);
+  
+  tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { 
+      label: 'Show Discord Fisher', 
+      click: () => {
+        mainWindow.show();
+      }
+    },
+    { 
+      label: 'Toggle Fishing',
+      click: () => {
+        if (botProcess && botProcess.send) {
+          botProcess.send({ command: 'toggle-fishing' });
+        }
+      },
+      enabled: botRunning
+    },
+    { type: 'separator' },
+    { 
+      label: 'Quit', 
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+  
+  tray.setToolTip('Discord Fishing Bot');
+  tray.setContextMenu(contextMenu);
+  
+  tray.on('click', () => {
+    if (mainWindow.isVisible()) {
+      mainWindow.hide();
+      showNotification('Discord Fishing Bot', 'App minimized to system tray.', () => {
+        mainWindow.show();
+      });
+    } else {
+      mainWindow.show();
+    }
+  });
+}
+
+function showNotification(title, body, onClick = null) {
+  // Don't show notifications on macOS when app is focused
+  if (process.platform === 'darwin' && BrowserWindow.getAllWindows().some(win => win.isFocused())) {
+    return;
+  }
+  
+  const notification = new Notification({
+    title: title,
+    body: body,
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    silent: false
+  });
+  
+  if (onClick) {
+    notification.on('click', onClick);
+  }
+  
+  notification.show();
 }
 
 app.whenReady().then(() => {
   createWindow();
+  createTray();
+
+  // Window control handlers
+  ipcMain.handle('minimize-window', () => {
+    mainWindow.minimize();
+    return { success: true };
+  });
+  
+  ipcMain.handle('maximize-window', () => {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+    return { success: true, maximized: mainWindow.isMaximized() };
+  });
+  
+  ipcMain.handle('close-window', () => {
+    mainWindow.hide();
+    showNotification('Discord Fishing Bot', 'App is still running in the system tray.', () => {
+      mainWindow.show();
+    });
+    return { success: true };
+  });
+  
+  ipcMain.handle('quit-app', () => {
+    isQuitting = true;
+    app.quit();
+    return { success: true };
+  });
 
   // Send saved config to renderer when requested
   ipcMain.handle('get-config', () => {
@@ -89,7 +207,35 @@ app.whenReady().then(() => {
         }
       );
 
-      // Fixed: This code was using undefined callbacks
+      // Update tray menu when bot is running
+      botRunning = true;
+      const newMenu = Menu.buildFromTemplate([
+        { 
+          label: 'Show Discord Fisher', 
+          click: () => {
+            mainWindow.show();
+          }
+        },
+        { 
+          label: 'Toggle Fishing',
+          click: () => {
+            if (botProcess && botProcess.send) {
+              botProcess.send({ command: 'toggle-fishing' });
+            }
+          },
+          enabled: true
+        },
+        { type: 'separator' },
+        { 
+          label: 'Quit', 
+          click: () => {
+            isQuitting = true;
+            app.quit();
+          }
+        }
+      ]);
+      tray.setContextMenu(newMenu);
+
       botProcess.on('message', (message) => {
         if (message.type === 'status') {
           mainWindow.webContents.send('status-update', message.status);
@@ -98,10 +244,39 @@ app.whenReady().then(() => {
         } else if (message.type === 'embed') {
           // Forward embed messages to the renderer
           mainWindow.webContents.send('embed-message', message.content);
+          
+          // Show notification if window is hidden and this is a fishing result
+          if (!mainWindow.isVisible() && message.source === 'fishing-bot') {
+            let notificationTitle = 'New Fishing Message';
+            let notificationBody = 'You received a message from the fishing bot.';
+            
+            if (message.content.description) {
+              // Try to extract a meaningful notification from the description
+              const desc = message.content.description;
+              
+              // Check if it's a catch message
+              if (desc.includes('caught') || desc.includes('fish')) {
+                const catchMatch = desc.match(/(You caught:[^\n]+)/i);
+                if (catchMatch) {
+                  notificationTitle = 'Caught Something!';
+                  notificationBody = catchMatch[1].replace(/<:[^:]+:[^>]+>/g, ''); // Remove emojis
+                }
+              }
+              
+              // Check if it's a verification message
+              if (desc.toLowerCase().includes('verify')) {
+                notificationTitle = '⚠️ Verification Required!';
+                notificationBody = 'The fishing bot needs verification. Click to view.';
+              }
+            }
+            
+            showNotification(notificationTitle, notificationBody, () => {
+              mainWindow.show();
+            });
+          }
         }
       });
       
-      botRunning = true;
       return { success: true };
     } catch (error) {
       console.error('Failed to start bot:', error);
@@ -116,6 +291,30 @@ app.whenReady().then(() => {
     try {
       await stopBot();
       botRunning = false;
+      
+      // Update tray menu when bot is stopped
+      const newMenu = Menu.buildFromTemplate([
+        { 
+          label: 'Show Discord Fisher', 
+          click: () => {
+            mainWindow.show();
+          }
+        },
+        { 
+          label: 'Toggle Fishing',
+          enabled: false
+        },
+        { type: 'separator' },
+        { 
+          label: 'Quit', 
+          click: () => {
+            isQuitting = true;
+            app.quit();
+          }
+        }
+      ]);
+      tray.setContextMenu(newMenu);
+      
       return { success: true };
     } catch (error) {
       console.error('Failed to stop bot:', error);
@@ -131,6 +330,22 @@ app.whenReady().then(() => {
       // Send a message to the bot process
       if (botProcess && botProcess.send) {
         botProcess.send({ command: 'toggle-fishing' });
+        
+        // We'll need to listen for a response to determine if fishing was started or stopped
+        botProcess.once('message', (message) => {
+          if (message.type === 'status') {
+            if (message.status === 'Fishing') {
+              showNotification('Fishing Started', 'The bot has started fishing.', () => {
+                mainWindow.show();
+              });
+            } else if (message.status === 'Running (Not Fishing)') {
+              showNotification('Fishing Stopped', 'The bot has stopped fishing.', () => {
+                mainWindow.show();
+              });
+            }
+          }
+        });
+        
         return { success: true };
       } else {
         return { success: false, message: 'Bot process not available' };
@@ -142,10 +357,24 @@ app.whenReady().then(() => {
   });
 });
 
+// Quit when all windows are closed, except on macOS
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform !== 'darwin') {
+    isQuitting = true;
+    app.quit();
+  }
 });
 
+// On macOS, recreate window when dock icon is clicked
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  } else {
+    mainWindow.show();
+  }
+});
+
+// Set the quitting flag when actually quitting
+app.on('before-quit', () => {
+  isQuitting = true;
 });

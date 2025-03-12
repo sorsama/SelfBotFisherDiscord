@@ -13,6 +13,46 @@ document.addEventListener('DOMContentLoaded', () => {
   const logOutput = document.getElementById('logOutput');
   const statusElement = document.getElementById('botStatus');
   
+  // Window control buttons
+  const minimizeBtn = document.getElementById('minimizeBtn');
+  const maximizeBtn = document.getElementById('maximizeBtn');
+  const closeBtn = document.getElementById('closeBtn');
+
+  // Set up window control button event listeners
+  if (minimizeBtn) {
+    minimizeBtn.addEventListener('click', async () => {
+      await window.electronAPI.windowControls.minimize();
+    });
+  }
+
+  if (maximizeBtn) {
+    maximizeBtn.addEventListener('click', async () => {
+      const result = await window.electronAPI.windowControls.maximize();
+      
+      // Update the button icon based on maximized state
+      if (result.maximized) {
+        maximizeBtn.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 12 12">
+            <rect width="9" height="9" x="1.5" y="1.5" stroke="currentColor" fill="none" stroke-width="1"></rect>
+            <rect width="6" height="6" x="3" y="4" stroke="currentColor" fill="none" stroke-width="1"></rect>
+          </svg>
+        `;
+      } else {
+        maximizeBtn.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 12 12">
+            <rect width="9" height="9" x="1.5" y="1.5" stroke="currentColor" fill="none"></rect>
+          </svg>
+        `;
+      }
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', async () => {
+      await window.electronAPI.windowControls.close();
+    });
+  }
+  
   // Helper functions
   function addToLog(message) {
     const line = document.createElement('div');

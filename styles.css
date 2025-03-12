@@ -64,13 +64,16 @@
 body {
   background-color: var(--background-tertiary);
   color: var(--text-normal);
-  padding: 20px;
+  padding: 0;
   line-height: 1.5;
   font-size: 16px;
 }
 
 .container {
+  display: flex;
+  flex-direction: column;
   max-width: 900px;
+  height: 100vh;
   margin: 0 auto;
   background-color: var(--background-primary);
   border-radius: 8px;
@@ -81,7 +84,7 @@ body {
 
 .app-header {
   background-color: var(--background-secondary);
-  padding: 20px;
+  padding: 12px 20px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -549,4 +552,98 @@ code {
   border-radius: 3px;
   padding: 0.2em 0.4em;
   font-family: 'Consolas', 'Monaco', 'Courier New', Courier, monospace;
+}
+
+/* Add these styles to your existing CSS file */
+
+/* Make the window draggable from the title bar */
+.title-bar {
+  -webkit-app-region: drag;
+  height: 32px;
+  background-color: var(--background-tertiary);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--header-primary);
+  font-size: 14px;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.title-bar-icon {
+  width: 16px;
+  height: 16px;
+  background-image: url('assets/icon-small.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  margin-right: 8px;
+}
+
+.title-bar-text {
+  flex-grow: 1;
+  font-weight: 500;
+}
+
+.title-bar-controls {
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+
+.control-button {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 45px;
+  height: 32px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.control-button:hover {
+  color: var(--text-normal);
+}
+
+.control-button.minimize:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.control-button.maximize:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.control-button.close:hover {
+  background-color: var(--red);
+  color: white;
+}
+
+/* Adjust the container for the new title bar */
+.container {
+  display: flex;
+  flex-direction: column;
+  max-width: 900px;
+  height: 100vh;
+  margin: 0 auto;
+  background-color: var(--background-primary);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.app-content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Adjust body padding */
+body {
+  padding: 0;
+}
+
+/* Adjust spacing for app header since we now have a title bar */
+.app-header {
+  padding-top: 12px;
 }
