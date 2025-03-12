@@ -3,15 +3,48 @@
   "version": "1.0.0",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build-portable": "electron-builder --win portable"
   },
-  "keywords": [],
-  "author": "soruz",
+  "author": "sour",
   "license": "ISC",
   "description": "",
   "dependencies": {
     "discord.js-selfbot-v13": "^3.6.0",
-    "dotenv": "^16.4.7",
-    "electron": "^35.0.1"
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "electron": "^35.0.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.sour.discordfishingbot",
+    "productName": "Discord Fishing Bot",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/.{idea,git,github,vscode,cache,DS_Store}",
+      "!{.eslintignore,.eslintrc.js,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}",
+      "!{.env,.env.example,.npmrc,pnpm-lock.yaml,package-lock.json}"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "./assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
   }
 }

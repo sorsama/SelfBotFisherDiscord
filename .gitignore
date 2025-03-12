@@ -1,4 +1,84 @@
-/.env
+# Application specific files
+.env
+config.json
+
+# Dependencies
 /node_modules
-/package-lock.json
-/config.json
+/.pnp
+.pnp.js
+yarn.lock
+package-lock.json
+
+# Build outputs
+/dist
+/out
+/build
+/.webpack/
+/app/dist
+
+# Electron-builder cache
+.electron-builder.env
+.electron-vendors.cache.json
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Debug files
+.eslintcache
+.node_repl_history
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# IDE - JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Temporary files
+.tmp/
+.temp/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Optional REPL history
+.node_repl_history
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Yarn Integrity file
+.yarn-integrity
