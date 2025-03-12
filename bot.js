@@ -6,11 +6,22 @@ let botProcess = null;
 let logCallback = null;
 let statusCallback = null;
 
-// Create a .env file with the provided configuration
+// Update the setupEnv function to use botId as userId for DM mode
 const setupEnv = (config) => {
   return new Promise((resolve, reject) => {
     try {
-      const envContent = `DISCORD_TOKEN=${config.token}\nDISCORD_BOT_CHANNEL=${config.channel}\nDISCORD_BOT_ID=${config.botId}\nFISHING_INTERVAL=${config.interval}\nAUTO_START_FISHING=false`;
+      // If in DM mode and userId is empty, use the botId as the userId
+      const userId = (config.channelType === 'dm' && !config.userId) ? config.botId : (config.userId || '');
+      
+      const envContent = 
+        `DISCORD_TOKEN=${config.token}\n` +
+        `CHANNEL_TYPE=${config.channelType}\n` +
+        `DISCORD_BOT_CHANNEL=${config.channel || ''}\n` +
+        `DISCORD_USER_ID=${userId}\n` +
+        `DISCORD_BOT_ID=${config.botId}\n` +
+        `FISHING_INTERVAL=${config.interval}\n` +
+        `AUTO_START_FISHING=false`;
+        
       fs.writeFileSync(path.join(__dirname, '.env'), envContent);
       resolve();
     } catch (error) {

@@ -13,6 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const logOutput = document.getElementById('logOutput');
   const statusElement = document.getElementById('botStatus');
   
+  // Get new DOM elements
+  const serverChannelRadio = document.getElementById('serverChannel');
+  const dmChannelRadio = document.getElementById('dmChannel');
+  const channelInputGroup = document.getElementById('channelInputGroup');
+  const userInputGroup = document.getElementById('userInputGroup');
+  const userIdInput = document.getElementById('userId');
+  
   // Window control buttons
   const minimizeBtn = document.getElementById('minimizeBtn');
   const maximizeBtn = document.getElementById('maximizeBtn');
@@ -53,6 +60,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
+  // Add event listeners for radio buttons
+  serverChannelRadio.addEventListener('change', () => {
+    if (serverChannelRadio.checked) {
+      channelInputGroup.style.display = 'block';
+      userInputGroup.style.display = 'none';
+    }
+  });
+
+  dmChannelRadio.addEventListener('change', () => {
+    if (dmChannelRadio.checked) {
+      channelInputGroup.style.display = 'none';
+      userInputGroup.style.display = 'block';
+      
+      // If userId is empty, set it to match botId
+      if (!userIdInput.value.trim()) {
+        userIdInput.value = botIdInput.value;
+      }
+    }
+  });
+  
+  // Sync botId to userId when in DM mode
+  botIdInput.addEventListener('input', () => {
+    if (dmChannelRadio.checked) {
+      userIdInput.value = botIdInput.value;
+    }
+  });
+  
   // Helper functions
   function addToLog(message) {
     const line = document.createElement('div');
@@ -91,10 +125,31 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       const config = await window.electronAPI.getConfig();
+      
+      // Set values from config
       tokenInput.value = config.token || '';
       channelInput.value = config.channel || '';
       botIdInput.value = config.botId || '574652751745777665'; // Virtual Fisher default
       intervalInput.value = config.interval || 3000;
+      
+      // Set user ID - if in DM mode and userId is empty, use botId
+      if (config.channelType === 'dm' && !config.userId) {
+        userIdInput.value = config.botId || '574652751745777665';
+      } else {
+        userIdInput.value = config.userId || '';
+      }
+      
+      // Set channel type
+      if (config.channelType === 'dm') {
+        dmChannelRadio.checked = true;
+        channelInputGroup.style.display = 'none';
+        userInputGroup.style.display = 'block';
+      } else {
+        serverChannelRadio.checked = true;
+        channelInputGroup.style.display = 'block';
+        userInputGroup.style.display = 'none';
+      }
+      
       addToLog('Configuration loaded successfully');
     } catch (error) {
       addToLog(`ERROR loading config: ${error.message}`);
@@ -119,7 +174,9 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const config = {
         token: tokenInput.value,
+        channelType: dmChannelRadio.checked ? 'dm' : 'server',
         channel: channelInput.value,
+        userId: userIdInput.value,
         botId: botIdInput.value || '574652751745777665',
         interval: parseInt(intervalInput.value) || 3000
       };
@@ -141,7 +198,9 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const config = {
         token: tokenInput.value,
+        channelType: dmChannelRadio.checked ? 'dm' : 'server',
         channel: channelInput.value,
+        userId: userIdInput.value,
         botId: botIdInput.value || '574652751745777665',
         interval: parseInt(intervalInput.value) || 3000
       };
@@ -151,8 +210,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       
-      if (!config.channel) {
-        addToLog('ERROR: Channel ID is required');
+      if (config.channelType === 'server' && !config.channel) {
+        addToLog('ERROR: Channel ID is required for server fishing');
+        return;
+      }
+      
+      if (config.channelType === 'dm' && !config.userId) {
+        addToLog('ERROR: User ID is required for DM fishing');
         return;
       }
       

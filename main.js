@@ -176,7 +176,9 @@ app.whenReady().then(() => {
   ipcMain.handle('get-config', () => {
     return {
       token: store.get('token', ''),
+      channelType: store.get('channelType', 'server'),
       channel: store.get('channel', ''),
+      userId: store.get('userId', ''),
       botId: store.get('botId', '574652751745777665'), 
       interval: store.get('interval', 3000)
     };
@@ -185,7 +187,9 @@ app.whenReady().then(() => {
   // Save config from renderer
   ipcMain.handle('save-config', (event, config) => {
     store.set('token', config.token);
+    store.set('channelType', config.channelType);
     store.set('channel', config.channel);
+    store.set('userId', config.userId);
     store.set('botId', config.botId);
     store.set('interval', config.interval);
     return { success: true };

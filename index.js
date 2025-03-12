@@ -9,6 +9,8 @@ let fishingChannel = null;
 const FISHING_BOT_ID = process.env.DISCORD_BOT_ID || "574652751745777665";
 const FISHING_INTERVAL_MS = parseInt(process.env.FISHING_INTERVAL) || 3000;
 const TARGET_CHANNEL_ID = process.env.DISCORD_BOT_CHANNEL;
+const TARGET_USER_ID = process.env.DISCORD_USER_ID;
+const CHANNEL_TYPE = process.env.CHANNEL_TYPE || 'server';
 
 // Handle IPC messages from parent process
 if (process.send) {
@@ -90,14 +92,14 @@ client.on("ready", async () => {
     process.send({ type: 'log', content: `Logged in as ${client.user.tag}` });
   }
   
-  // If channel ID was provided via environment, set up channel
-  if (TARGET_CHANNEL_ID) {
+  // Initialize fishing channel based on channel type
+  if (CHANNEL_TYPE === 'server' && TARGET_CHANNEL_ID) {
     try {
       const channel = await client.channels.fetch(TARGET_CHANNEL_ID);
       
       if (channel) {
-        console.log(`Found target channel: ${channel.name}`);
-        process.send?.({ type: 'log', content: `Found target channel: ${channel.name}` });
+        console.log(`Found target server channel: ${channel.name}`);
+        process.send?.({ type: 'log', content: `Found target server channel: ${channel.name}` });
         fishingChannel = channel;
         
         // Start fishing if auto-start is enabled
@@ -111,6 +113,29 @@ client.on("ready", async () => {
     } catch (error) {
       console.error(`Error setting up channel: ${error.message}`);
       process.send?.({ type: 'log', content: `❌ Error setting up channel: ${error.message}` });
+    }
+  } else if (CHANNEL_TYPE === 'dm' && TARGET_USER_ID) {
+    try {
+      // Get or create DM channel
+      const user = await client.users.fetch(TARGET_USER_ID);
+      
+      if (user) {
+        const dmChannel = await user.createDM();
+        console.log(`Created DM channel with user: ${user.tag}`);
+        process.send?.({ type: 'log', content: `Created DM channel with user: ${user.tag}` });
+        fishingChannel = dmChannel;
+        
+        // Start fishing if auto-start is enabled
+        if (process.env.AUTO_START_FISHING === "true") {
+          startFishing();
+        }
+      } else {
+        console.error(`Could not find user with ID: ${TARGET_USER_ID}`);
+        process.send?.({ type: 'log', content: `❌ Could not find user with ID: ${TARGET_USER_ID}` });
+      }
+    } catch (error) {
+      console.error(`Error setting up DM channel: ${error.message}`);
+      process.send?.({ type: 'log', content: `❌ Error setting up DM channel: ${error.message}` });
     }
   }
 });
