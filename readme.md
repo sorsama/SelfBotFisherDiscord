@@ -15,7 +15,7 @@ An automated fishing bot that helps you automate fishing tasks on discord bot.
 
 1. Clone this repository:
    ```
-   git clone https://github.com/your-username/TestSelfBotFisher.git
+   git clone https://github.com/sorsama/SelfBotFisherDiscord.git
    ```
 2. Install dependencies:
    ```
